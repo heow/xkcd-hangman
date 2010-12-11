@@ -28,8 +28,8 @@
 ;; Use this macro around any code you want to make API
 ;; calls.
 (defmacro with-appname [& body]
-  `(fb/with-fb-keys ["secret"
-                     "secret"]
+  `(fb/with-fb-keys ["079401d91999976ba60dfb79f79a4ae6"
+                     "4530c3e205184069c214407ff44c5af4"]
      ~@body))
 
 ;; Common processing of params.

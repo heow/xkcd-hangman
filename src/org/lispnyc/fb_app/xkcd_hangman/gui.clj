@@ -117,7 +117,7 @@
   [:center
    [:hr]
    [:h5 "Content courtesy of " [:a { :href "http://xkcd.com"} "XKCD"] [:br]
-    [:a {:href "https://github.com/heow/clj-facebook/blob/master/src/com/agi/fb_app/xkcd_hangman/gui.clj" :target "_new"} "view Clojure source" ]]
+    [:a {:href "https://github.com/heow/xkcd-hangman/blob/master/src/org/lispnyc/fb_app/xkcd_hangman/gui.clj" :target "_new"} "view Clojure source" ]]
    ])
 
 (defn page-play-game-with-guess [params]

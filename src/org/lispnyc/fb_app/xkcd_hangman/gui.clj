@@ -1,14 +1,17 @@
 ;; modeled after the com.twinql.clojure.facebook's test application
 
-;; Developer's note: this is using Compojure 0.3 which is a bit outdated
-;; some of the existing utilities exist because of that.  Note, once
-;; brought into 0.4 it'll be about 50% smaller.
-
 (ns org.lispnyc.fb-app.xkcd-hangman.gui
   (:use org.lispnyc.fb-app.xkcd-hangman.game
         clojure.set
-        compojure)
-  (:require [com.twinql.clojure.facebook :as fb])
+        compojure.core
+        hiccup.core
+        hiccup.form-helpers
+        clojure.pprint
+        ring.middleware.params
+        ring.middleware.keyword-params)
+  (:require [com.twinql.clojure.facebook :as fb]
+            [compojure.route :as route]
+            [ring.adapter.jetty :as jetty])
   (:gen-class)) ; required for main
 
 (def *users-filename*       "users.data")
@@ -18,18 +21,17 @@
 (def *play-game-with-guess* (str *canvas-root* "play-game-with-guess"))
 (def *comic-url*            "http://imgs.xkcd.com/comics/")
 
-;; Trivial storage of logged-in users.
-(def *users* (ref {}))
+(def *users* (ref {})) ; trivial storage
 
-;; Request debugging.
-(def *print-fb-params?* true)
+(def *debug?* true) ; toggle debugging
+(defmacro debugln [& body] `(if *debug?* (println ~@body)))
 
 ;; Bind the session information for this application.
 ;; Use this macro around any code you want to make API
 ;; calls.
 (defmacro with-appname [& body]
-  `(fb/with-fb-keys ["079401d91999976ba60dfb79f79a4ae6"
-                     "4530c3e205184069c214407ff44c5af4"]
+  `(fb/with-fb-keys ["secret"
+                     "secret"]
      ~@body))
 
 ;; Common processing of params.
@@ -46,8 +48,7 @@
                (mapcat (fn [[bind-to f]]
                          (list bind-to (list f 'params)))
                        m))]
-       (when *print-fb-params?*
-         (prn ~'params))
+       (debugln "# new params: " ~'params)
        (fb/with-session-key ~'params
          ~@body))))
 
@@ -71,8 +72,7 @@
   "Returns whether the user is authorized."
   [params]
   (when (contains-login-params? params)
-    (println "# ... handling user login with params:")
-    (prn (select-keys params [:fb_sig_user, :fb_sig_authorize, :fb_sig_expires]))
+    (debugln "# ... handling user login with params:" (select-keys params [:fb_sig_user, :fb_sig_authorize, :fb_sig_expires]))
     
     (let [user        (:fb_sig_user params)
           authorized? (or (:fb_sig_authorize params)
@@ -88,7 +88,6 @@
               (alter *users* dissoc user))))
         authorized?))))
 
-;; Checks the user from the parameters against the expiry in the users map.
 (defn user-logged-in? [params]
   (let [expires (get @*users* (:fb_sig_user params) 0)]
     (> (* expires 1000)
@@ -182,41 +181,34 @@
           (page-footer params)))))))
     
 (defroutes game-app
-  (POST *play-game-with-guess*
-        (println "# play-game-with-guess: " params)
-        (with-fb-params {}
+  (POST *play-game-with-guess* {params :params} 
+        (do
+          (debugln "# play-game-with-guess: " params)
           (page-play-game-with-guess params)))
-  (GET (str *canvas-root* "canvas/")
-       (println "# Accessed main canvas page.")
-       (with-fb-params {}
-         (handle-user-login params)
-         (fb/with-new-fb-session []
-           (if (user-just-logged-in? params)
-             ;; TODO: validate login?
-             ;; http://developers.facebook.com/docs/authentication/fb_sig
-             (http-redirect *fb-url*)
-             (html
-              [:h1 "XKCD Hangman"]
-              (if (user-logged-in? params)
-                ;; (page-start params)
-                (page-play-game-with-guess params)
-                (html
-                 [:p [:a {:target "_parent" ;; <http://www.maybefriday.com/blog/2009/07/facebook-apps-and-iframes/>
-                          :href (fb/login-url)}
-                      "First log in then we can get started."]])))))))
-
-  ;; (route/files *canvas-root* {:root "html/"}) 
-  ;; ...is replaced by the pain of Compojure 0.3:
-  (GET "/xhm/images/hm0.gif" (serve-file "html/images" "hm0.gif"))
-  (GET "/xhm/images/hm1.gif" (serve-file "html/images" "hm1.gif"))
-  (GET "/xhm/images/hm2.gif" (serve-file "html/images" "hm2.gif"))
-  (GET "/xhm/images/hm3.gif" (serve-file "html/images" "hm3.gif"))
-  (GET "/xhm/images/hm4.gif" (serve-file "html/images" "hm4.gif"))
-  (GET "/xhm/images/hm5.gif" (serve-file "html/images" "hm5.gif"))
-  (GET "/xhm/images/hm6.gif" (serve-file "html/images" "hm6.gif"))
   
-  (GET "/*"
-       (with-params
+  (GET (str *canvas-root* "canvas/") {params :params} 
+       (do
+         (debugln "# Accessed main canvas page: ")
+         (with-fb-params {}
+           (handle-user-login params)
+           (fb/with-new-fb-session []
+             (if (user-just-logged-in? params)
+               (do
+                 (debugln "# redirecting to: " *fb-url*)
+                 (http-redirect *fb-url*))
+               (html
+                [:h1 "XKCD Hangman"]
+                (if (user-logged-in? params)
+                  (page-play-game-with-guess params)
+                  (html
+                   [:p [:a {:target "_parent" 
+                            :href (fb/login-url)}
+                        "First log in then we can get started."]]))))))))
+
+  (route/files *canvas-root* {:root "html/"}) 
+  
+  (GET "/*" {params :params} 
+       (do
          (println "# Accessed default page: " params)
          (html
           [:h1 "404 not found"]
@@ -231,8 +223,9 @@
 
 (defn start-server [host port]
   (if (string? port) (start-server host (Integer/parseInt port)) ; rerun as int
-      (compojure.server.jetty/run-server {:port port} ; 0.3-isim
-                  "/*" (servlet game-app))))
+      (jetty/run-jetty
+       ;; unstringify the string param hash back into keyword hash
+       (wrap-params (wrap-keyword-params game-app)) {:port port :join? false})))
 
 (defn -main [& args] ; required for main
   (println
@@ -252,7 +245,7 @@
 (comment
   (do
     (in-ns 'org.lispnyc.fb-app.xkcd-hangman.gui)
-    (defonce server (start-server "localhost" "8888")))
-  (.stop server)
-  (.start server)
-  )
+    (defonce server (start-server "localhost" "8888"))
+    ;; (.stop server)
+    ))
+ 

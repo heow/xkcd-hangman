@@ -5,7 +5,9 @@
                 [org.clojure/clojure "1.2.0"]
                 [org.clojure/clojure-contrib "1.2.0"]
                 [com.twinql.clojure/facebook "1.2.2"]                
-                [compojure "0.3.2"]
+                [compojure "0.4.1"]
+                [ring/ring-jetty-adapter "0.2.5"]
+                [hiccup "0.3.1"]
                 ]
   :dev-dependencies [
                     [swank-clojure "1.3.0-SNAPSHOT"]

@@ -1,4 +1,4 @@
-(defproject xkcd-hangman "1.0.0"
+(defproject xkcd-hangman "1.1.0"
   :description "XKCD Inspired Hangman game as a Facebook application."
   :main org.lispnyc.fb-app.xkcd-hangman.gui
   :dependencies [

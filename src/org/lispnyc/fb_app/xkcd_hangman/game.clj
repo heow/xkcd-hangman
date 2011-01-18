@@ -1,19 +1,19 @@
 (ns org.lispnyc.fb-app.xkcd-hangman.game
   (:use clojure.set))
 
-(defn word-complete? [target-word guesses]
-  "Expects a string and an array of chars"
+(defn word-complete? "Expects a string and an array of chars"
+  [target-word guesses]
   (= 0
      (count (difference (set (.toUpperCase target-word))
                         (set (.toUpperCase (str guesses)))))))
                           
-(defn visualize [target-word guesses]
-  "For GUI display of missing letters."
+(defn visualize "For GUI display of missing letters."
+  [target-word guesses]
   (apply str (map #(if (contains? (set (.toUpperCase guesses)) %1) %1 "_")
                   (.toUpperCase target-word))))
 
-(defn count-incorrect [target-word guesses]
-  "Count the incorrect guesses, spaces don't count."
+(defn count-incorrect "Count the incorrect guesses, spaces don't count."
+  [target-word guesses]
   (count (difference (set (.toUpperCase
                            (apply str (filter #(not (= \space %1)) guesses))))
                      (set (.toUpperCase target-word)) )))
@@ -48,8 +48,8 @@
 (defn list-categories []
   (conj (sort (set (map #(:category %1) *random-words*))) *category-any*))
 
-(defn select-word-by-category [category]
-  "any or no category is random"
+(defn select-word-by-category "any or no category is random"
+  [category]
   (if (or (= category *category-any*)
           (= category nil))
     (rand-nth *random-words*)
@@ -58,6 +58,5 @@
 ;; borrowed from rosettacode.org
 (let [A (into #{} "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
       A-map (zipmap A (take 52 (drop 26 (cycle A))))]     
- 
   (defn rot13[in-str]
     (reduce str (map #(if (A %1) (A-map %1) %1)  in-str))))

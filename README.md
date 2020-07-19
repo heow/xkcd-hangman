@@ -5,7 +5,7 @@ This programming experiment/example is an [XKCD][1]-inspired hangman game implem
 
 It plays hangman XKCD style, with hints and a nice surprise at the end when you win!
 
-(html/images/hm3.gif)
+![hangman image](html/images/hm3.gif)
 
 Originally created for a presentation to show the ease of using Clojure with Facebook integration and a surprising amount of sophistication for the meager amount of code.
 
